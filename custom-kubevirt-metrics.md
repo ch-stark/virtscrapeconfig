@@ -1,3 +1,4 @@
+``
 apiVersion: monitoring.rhobs/v1alpha1
 kind: ScrapeConfig
 metadata:
@@ -57,7 +58,7 @@ spec:
   staticConfigs:
     - targets:
         - prometheus-k8s.openshift-monitoring.svc:9091
-
+``
 Why these metrics matter
 
 Wait Time (vcpu_wait_seconds_total): This is the most important "noisy neighbor" metric. It tells you if your VM is ready to run but the physical CPU is busy with other tasks.
