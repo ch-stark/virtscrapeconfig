@@ -134,31 +134,51 @@ By default, MCOA filters out user-defined metrics to protect the Hub's storage f
 This is configured via the `observability-metrics-allowlist` ConfigMap in the `open-cluster-management-observability` namespace on the Hub:
  
 ```yaml
-apiVersion: v1
-kind: ConfigMap
+apiVersion: monitoring.rhobs/v1alpha1
+kind: ScrapeConfig
 metadata:
-  name: observability-metrics-allowlist
+  name: java-jvm-metrics
   namespace: open-cluster-management-observability
-data:
-  metrics_list.yaml: |
-    additionalMetrics:
-      - jvm_memory_used_bytes
-      - java_app_transactions_total
-      - process_cpu_seconds_total
+  labels:
+    # This label is required to route it to the user workload pipeline
+    app.kubernetes.io/component: user-workload-metrics-collector 
+spec:
+  jobName: java-jvm-federation
+  metricsPath: /federate
+  params:
+    match[]:
+    - '{__name__="jvm_memory_used_bytes"}'
+    - '{__name__="java_app_transactions_total"}'
+    - '{__name__="process_cpu_seconds_total"}'
 ```
  
-Apply it:
- 
-```bash
-oc apply -f observability-metrics-allowlist.yaml
+Step 2: Bind the ScrapeConfig to your Placement For MCOA to actually push this configuration down to your managed clusters, you must explicitly reference it in the ClusterManagementAddOn resource
+.
+Run oc edit clustermanagementaddon multicluster-observability-addon and add your new ScrapeConfig to the configs list under the appropriate placement (e.g., global):
+
+
+```yaml
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ClusterManagementAddOn
+metadata:
+  name: multicluster-observability-addon
+spec:
+  installStrategy:
+    type: Placements
+    placements:
+      - name: global # Or your specific placement name
+        namespace: open-cluster-management-global-set
+        configs:
+          # ... existing configs ...
+          
+          # ADD THIS BLOCK:
+          - group: monitoring.rhobs
+            resource: scrapeconfigs
+            name: java-jvm-metrics
+            namespace: open-cluster-management-observability
+
+Once this is applied, the Prometheus Operator on your managed clusters will detect the new configuration and update the local Prometheus Agent to federate your Java metrics and remote-write them back to the Hub
 ```
- 
-> **Note:** If this ConfigMap already exists in your cluster, patch it rather than replacing it to avoid removing existing allowlisted metrics from other applications:
-> ```bash
-> oc edit configmap observability-metrics-allowlist -n open-cluster-management-observability
-> ```
- 
-Changes take effect within one to two scrape intervals without requiring a restart.
  
 ---
  
