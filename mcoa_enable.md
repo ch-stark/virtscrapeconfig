@@ -34,17 +34,13 @@ Additionally, a fail-safe alert named **`ManagedClusterMetricsMissing`** is eval
 
 The feature operates by deploying targeted Prometheus recording rules to the managed clusters. The resulting low-cardinality metrics are federated to the hub and visualized in centralized Grafana dashboards.
 
-### Right-Sizing vs. Vertical Pod Autoscaler (VPA) in Virtualization
+### Why Right-Sizing Matters for Virtualization
 
-Understanding the role of VirtRightSizing requires contrasting it with the Vertical Pod Autoscaler (VPA).
+The Vertical Pod Autoscaler (VPA) is a common tool for optimizing resource requests in Kubernetes, but it **is not supported for OpenShift Virtualization**. VPA targets standard Kubernetes workload controllers (Deployments, StatefulSets, DaemonSets, etc.) and does not work with KubeVirt `VirtualMachine` custom resources. This leaves a gap: without Right-Sizing, there is no automated way to evaluate whether VMs are correctly sized across a fleet.
 
-#### Execution Layer and Workload Disruption
+RHACM Right-Sizing fills this gap as a **strategic advisory layer**. It provides human-validated recommendations based on long-term historical data (days or weeks) and does not automatically mutate workloads. This allows platform administrators and FinOps teams to review fleet-wide efficiency reporting and schedule graceful VM resizing during approved maintenance windows.
 
-VPA is a tactical, runtime automation tool that uses a mutating admission webhook to dynamically adjust pod resource requests. To apply these changes, VPA restarts the pods. For OpenShift Virtualization, restarting a `virt-launcher` pod means abruptly rebooting the guest operating system of the Virtual Machine — a highly disruptive event.
-
-#### Strategic Capacity Planning
-
-Because automated VM reboots are often unacceptable in production, RHACM Right-Sizing acts as a **strategic advisory layer**. It provides human-validated recommendations based on long-term data (days or weeks) and does not automatically mutate workloads. This allows platform administrators and FinOps teams to review fleet-wide efficiency reporting and schedule graceful VM resizing during approved maintenance windows.
+For live vertical resizing of individual VMs, KubeVirt provides its own native mechanisms such as **memory hotplug** and **CPU hotplug**, which can adjust resources without rebooting the guest. Right-Sizing complements these by answering the fleet-wide question: *which VMs should be resized, and by how much?*
 
 ---
 
